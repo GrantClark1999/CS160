@@ -76,13 +76,13 @@ void typeError(TypeErrorCode code) {
 void TypeCheck::visitProgramNode(ProgramNode* node) {
   classTable = new ClassTable();
   node->visit_children(this);
-  if (classTable->count("Main") == 0) typeError(no_main_class);
+  if (!classTable->count("Main")) typeError(no_main_class);
 }
 
 void TypeCheck::visitClassNode(ClassNode* node) {
   IdentifierNode* superClass = node->identifier_2;
   std::string superClassName = superClass ? superClass->name : "";
-  if (superClass && classTable->count(superClassName) == 0)
+  if (superClass && !classTable->count(superClassName))
     typeError(undefined_class);
 
   // Set currentLocalOffset to 0 initially so we know when declarations
@@ -93,12 +93,23 @@ void TypeCheck::visitClassNode(ClassNode* node) {
   currentVariableTable = new VariableTable();
   currentClassName = node->identifier_1->name;
 
-  node->visit_children(this);
+  if (currentClassName == "Main") {
+    if (node->declaration_list && node->declaration_list->size())
+      typeError(main_class_members_present);
+    bool found_main_method = false;
+    if (node->method_list) {
+      for (auto method : *node->method_list) {
+        found_main_method |= method->identifier->name == "main";
+      }
+    }
+    if (!found_main_method) typeError(no_main_method);
+  }
 
   ClassInfo classInfo{superClassName, currentMethodTable, currentVariableTable,
                       currentMemberOffset};
-
   (*classTable)[currentClassName] = classInfo;
+
+  node->visit_children(this);
 }
 
 void TypeCheck::visitMethodNode(MethodNode* node) {
@@ -109,6 +120,15 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   node->visit_children(this);
   node->basetype = node->type->basetype;
   node->objectClassName = node->type->objectClassName;
+
+  if (node->methodbody->basetype != node->basetype ||
+      node->methodbody->objectClassName != node->objectClassName)
+    typeError(return_type_mismatch);
+  if (node->identifier->name == currentClassName && node->basetype != bt_none)
+    typeError(constructor_returns_type);
+  if (currentClassName == "Main" && node->identifier->name == "main" &&
+      node->basetype != bt_none)
+    typeError(main_method_incorrect_signature);
 
   auto parameters = new std::list<CompoundType>();
   if (node->parameter_list) {
@@ -127,8 +147,10 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
 
 void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
   node->visit_children(this);
-  node->basetype = node->returnstatement->basetype;
-  node->objectClassName = node->returnstatement->objectClassName;
+  node->basetype =
+      node->returnstatement ? node->returnstatement->basetype : bt_none;
+  node->objectClassName =
+      node->returnstatement ? node->returnstatement->objectClassName : "";
 }
 
 void TypeCheck::visitParameterNode(ParameterNode* node) {
@@ -147,6 +169,9 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
   node->visit_children(this);
   node->basetype = node->type->basetype;
   node->objectClassName = node->type->objectClassName;
+
+  if (node->basetype == bt_object && !classTable->count(node->objectClassName))
+    typeError(undefined_class);
 
   CompoundType type{node->basetype, node->objectClassName};
 
@@ -202,8 +227,9 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
   }
 
   if (type.baseType != node->expression->basetype ||
-      type.objectClassName != node->expression->objectClassName)
+      type.objectClassName != node->expression->objectClassName) {
     typeError(assignment_type_mismatch);
+  }
 }
 
 void TypeCheck::visitCallNode(CallNode* node) {
@@ -319,30 +345,94 @@ void TypeCheck::visitNegationNode(NegationNode* node) {
   node->basetype = bt_integer;
 }
 
+void checkArguments(std::list<ExpressionNode*>* actual,
+                    std::list<CompoundType>* expected) {
+  if (expected->size() != actual->size()) typeError(argument_number_mismatch);
+  auto expected_iter = expected->begin();
+  auto actual_iter = actual->begin();
+  for (; expected_iter != expected->end(); ++expected_iter, ++actual_iter) {
+    if (expected_iter->baseType != (*actual_iter)->basetype ||
+        expected_iter->objectClassName != (*actual_iter)->objectClassName)
+      typeError(argument_type_mismatch);
+  }
+}
+
 void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   node->visit_children(this);
 
-  // MethodInfo methodInfo;
-  // std::string id1 = node->identifier_1->name;
+  std::string methodName =
+      node->identifier_2 ? node->identifier_2->name : node->identifier_1->name;
+  MethodInfo methodInfo;
 
-  // // foo.bar()
-  // if (node->identifier_2) {
-  //   std::string id2 = node->identifier_2->name;
-  // }
-  // // foo()
-  // else {
-  //   if (currentMethodTable->count(id1) != 0)
-  //     methodInfo = (*currentMethodTable)[id1];
+  // Pattern: foo.bar()
+  if (node->identifier_2) {
+    VariableNode varNode(node->identifier_1);
+    varNode.accept(this);
+    if (varNode.basetype != bt_object) typeError(not_object);
+    std::string className = varNode.objectClassName;
 
-  // }
+    // Search methods of current class and super classes.
+    while (!(*classTable)[className].methods->count(methodName)) {
+      className = (*classTable)[className].superClassName;
+      if (!classTable->count(className)) typeError(undefined_method);
+    }
+
+    methodInfo = (*(*classTable)[className].methods)[methodName];
+  }
+  // Pattern: foo()
+  else {
+    if (!currentMethodTable->count(methodName)) typeError(undefined_method);
+    methodInfo = (*currentMethodTable)[methodName];
+  }
+
+  checkArguments(node->expression_list, methodInfo.parameters);
+
+  node->basetype = methodInfo.returnType.baseType;
+  node->objectClassName = methodInfo.returnType.objectClassName;
 }
 
 void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
   node->visit_children(this);
+  std::string memberName = node->identifier_2->name;
+
+  VariableNode varNode(node->identifier_1);
+  varNode.accept(this);
+
+  if (varNode.basetype != bt_object) typeError(not_object);
+  std::string className = varNode.objectClassName;
+
+  // Search members of current class and super classes.
+  while (!(*classTable)[className].members->count(memberName)) {
+    className = (*classTable)[className].superClassName;
+    if (!classTable->count(className)) typeError(undefined_member);
+  }
+
+  // Overwrite type to be the member variable's type
+  CompoundType type = (*(*classTable)[className].members)[memberName].type;
+  node->basetype = type.baseType;
+  node->objectClassName = type.objectClassName;
 }
 
 void TypeCheck::visitVariableNode(VariableNode* node) {
   node->visit_children(this);
+  std::string varName = node->identifier->name;
+  CompoundType type;
+
+  // Local variable.
+  if (currentVariableTable->count(varName))
+    type = (*currentVariableTable)[varName].type;
+  // Check current class members, then super classes members.
+  else {
+    std::string className = currentClassName;
+    while (!(*classTable)[className].members->count(varName)) {
+      className = (*classTable)[className].superClassName;
+      if (!classTable->count(className)) typeError(undefined_variable);
+    }
+    type = (*(*classTable)[className].members)[varName].type;
+  }
+
+  node->basetype = type.baseType;
+  node->objectClassName = type.objectClassName;
 }
 
 void TypeCheck::visitIntegerLiteralNode(IntegerLiteralNode* node) {
@@ -358,21 +448,13 @@ void TypeCheck::visitNewNode(NewNode* node) {
 
   node->visit_children(this);
 
-  if (classTable->count(className) == 0) typeError(undefined_class);
+  if (!classTable->count(className)) typeError(undefined_class);
   MethodTable* methodTable = (*classTable)[className].methods;
-  if (methodTable->count(className) == 0) typeError(undefined_method);
+  if (!methodTable->count(className)) typeError(undefined_method);
 
   MethodInfo methodInfo = (*methodTable)[className];
-  if (methodInfo.parameters->size() != node->expression_list->size())
-    typeError(argument_number_mismatch);
 
-  auto expected = methodInfo.parameters->begin();
-  auto actual = node->expression_list->begin();
-  for (; expected != methodInfo.parameters->end(); ++expected, ++actual) {
-    if (expected->baseType != (*actual)->basetype ||
-        expected->objectClassName != (*actual)->objectClassName)
-      typeError(argument_type_mismatch);
-  }
+  checkArguments(node->expression_list, methodInfo.parameters);
 
   node->basetype = bt_object;
   node->objectClassName = className;

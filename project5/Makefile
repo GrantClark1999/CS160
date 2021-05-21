@@ -42,6 +42,10 @@ run: $(TARGET)
 diff: $(TARGET)
 	python3 runtests.py | diff - output.txt
 
+.PHONY: output
+output: $(TARGET)
+	python3 runtests.py > output2.txt
+
 .PHONY: clean
 clean:
 	rm -f *.o *~ lexer.cpp parser.cpp parser.hpp ast.cpp ast.hpp parser.output $(TARGET)
