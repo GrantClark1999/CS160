@@ -1,0 +1,255 @@
+./lang < tests/0.good.lang:
+Assembling and linking failed.
+
+./lang < tests/1.good.lang:
+Assembling and linking failed.
+
+./lang < tests/2.good.lang:
+Assembling and linking failed.
+
+./lang < tests/3.good.lang:
+Assembling and linking failed.
+
+./lang < tests/4.good.lang:
+Assembling and linking failed.
+
+./lang < tests/5.good.lang:
+Assembling and linking failed.
+
+./lang < tests/6.good.lang:
+Assembling and linking failed.
+
+./lang < tests/7.good.lang:
+Assembling and linking failed.
+
+./lang < tests/8.good.lang:
+Assembling and linking failed.
+
+./lang < tests/9.good.lang:
+Assembling and linking failed.
+
+./lang < tests/10.good.lang:
+Assembling and linking failed.
+
+./lang < tests/11.good.lang:
+Assembling and linking failed.
+
+./lang < tests/12.good.lang:
+Assembling and linking failed.
+
+./lang < tests/13.good.lang:
+Assembling and linking failed.
+
+./lang < tests/14.good.lang:
+Assembling and linking failed.
+
+./lang < tests/15.good.lang:
+Assembling and linking failed.
+
+./lang < tests/16.good.lang:
+Assembling and linking failed.
+
+./lang < tests/17.good.lang:
+Method does not exist.
+
+./lang < tests/18.good.lang:
+Method does not exist.
+
+./lang < tests/19.good.lang:
+Assembling and linking failed.
+
+./lang < tests/20.good.lang:
+Assembling and linking failed.
+
+./lang < tests/21.good.lang:
+Assembling and linking failed.
+
+./lang < tests/22.good.lang:
+Assembling and linking failed.
+
+./lang < tests/23.good.lang:
+Method does not exist.
+
+./lang < tests/24.good.lang:
+Method does not exist.
+
+./lang < tests/25.good.lang:
+Assembling and linking failed.
+
+./lang < tests/26.good.lang:
+Method does not exist.
+
+./lang < tests/27.good.lang:
+Method does not exist.
+
+./lang < tests/28.good.lang:
+Assembling and linking failed.
+
+./lang < tests/29.good.lang:
+Assembling and linking failed.
+
+./lang < tests/30.good.lang:
+Assembling and linking failed.
+
+./lang < tests/31.good.lang:
+Assembling and linking failed.
+
+./lang < tests/32.good.lang:
+Assembling and linking failed.
+
+./lang < tests/33.good.lang:
+Assembling and linking failed.
+
+./lang < tests/34.good.lang:
+Assembling and linking failed.
+
+./lang < tests/35.good.lang:
+Assembling and linking failed.
+
+./lang < tests/36.good.lang:
+Assembling and linking failed.
+
+./lang < tests/37.good.lang:
+Method does not exist.
+
+./lang < tests/38.good.lang:
+Method does not exist.
+
+./lang < tests/39.good.lang:
+Assembling and linking failed.
+
+./lang < tests/40.good.lang:
+Method does not exist.
+
+./lang < tests/41.good.lang:
+Method does not exist.
+
+./lang < tests/42.good.lang:
+Method does not exist.
+
+./lang < tests/43.good.lang:
+Method does not exist.
+
+./lang < tests/44.good.lang:
+Method does not exist.
+
+./lang < tests/45.good.lang:
+Assembling and linking failed.
+
+./lang < tests/46.good.lang:
+Method does not exist.
+
+./lang < tests/47.good.lang:
+Method does not exist.
+
+./lang < tests/48.good.lang:
+Method does not exist.
+
+./lang < tests/49.good.lang:
+Method does not exist.
+
+./lang < tests/50.good.lang:
+Assembling and linking failed.
+
+./lang < tests/51.good.lang:
+Assembling and linking failed.
+
+./lang < tests/52.good.lang:
+Method does not exist.
+
+./lang < tests/53.good.lang:
+Assembling and linking failed.
+
+./lang < tests/54.good.lang:
+Method does not exist.
+
+./lang < tests/55.good.lang:
+Method does not exist.
+
+./lang < tests/56.good.lang:
+Assembling and linking failed.
+
+./lang < tests/57.good.lang:
+Method does not exist.
+
+./lang < tests/58.good.lang:
+Method does not exist.
+
+./lang < tests/59.good.lang:
+Assembling and linking failed.
+
+./lang < tests/60.good.lang:
+Method does not exist.
+
+./lang < tests/61.good.lang:
+Method does not exist.
+
+./lang < tests/62.good.lang:
+Method does not exist.
+
+./lang < tests/63.good.lang:
+Method does not exist.
+
+./lang < tests/64.good.lang:
+Assembling and linking failed.
+
+./lang < tests/65.good.lang:
+Method does not exist.
+
+./lang < tests/66.good.lang:
+Assembling and linking failed.
+
+./lang < tests/67.good.lang:
+Method does not exist.
+
+./lang < tests/68.good.lang:
+Method does not exist.
+
+./lang < tests/69.good.lang:
+Assembling and linking failed.
+
+./lang < tests/70.good.lang:
+Assembling and linking failed.
+
+./lang < tests/71.good.lang:
+Assembling and linking failed.
+
+./lang < tests/72.good.lang:
+Method does not exist.
+
+./lang < tests/73.good.lang:
+Assembling and linking failed.
+
+./lang < tests/74.good.lang:
+Assembling and linking failed.
+
+./lang < tests/75.good.lang:
+Method does not exist.
+
+./lang < tests/76.good.lang:
+Assembling and linking failed.
+
+./lang < tests/77.good.lang:
+Method does not exist.
+
+./lang < tests/78.good.lang:
+Assembling and linking failed.
+
+./lang < tests/79.good.lang:
+Method does not exist.
+
+./lang < tests/80.good.lang:
+Method does not exist.
+
+./lang < tests/81.good.lang:
+Assembling and linking failed.
+
+./lang < tests/82.good.lang:
+Method does not exist.
+
+./lang < tests/83.good.lang:
+Assembling and linking failed.
+
+./lang < tests/84.good.lang:
+Method does not exist.
+
