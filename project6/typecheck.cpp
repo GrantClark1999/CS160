@@ -110,6 +110,8 @@ void TypeCheck::visitClassNode(ClassNode* node) {
   (*classTable)[currentClassName] = classInfo;
 
   node->visit_children(this);
+
+  (*classTable)[currentClassName].membersSize = currentMemberOffset;
 }
 
 void TypeCheck::visitMethodNode(MethodNode* node) {
@@ -122,8 +124,17 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   node->objectClassName = node->type->objectClassName;
 
   if (node->methodbody->basetype != node->basetype ||
-      node->methodbody->objectClassName != node->objectClassName)
-    typeError(return_type_mismatch);
+      node->methodbody->objectClassName != node->objectClassName) {
+    // Check superclass
+    std::string superClass =
+        classTable->at(node->methodbody->objectClassName).superClassName;
+    while (!superClass.empty()) {
+      if (superClass == node->objectClassName) break;
+      superClass = classTable->at(superClass).superClassName;
+    }
+    if (superClass.empty())
+      typeError(return_type_mismatch);
+  }
   if (node->identifier->name == currentClassName && node->basetype != bt_none)
     typeError(constructor_returns_type);
   if (currentClassName == "Main" && node->identifier->name == "main" &&
@@ -360,30 +371,26 @@ void checkArguments(std::list<ExpressionNode*>* actual,
 void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   node->visit_children(this);
 
-  std::string methodName =
-      node->identifier_2 ? node->identifier_2->name : node->identifier_1->name;
-  MethodInfo methodInfo;
+  // (Default) Pattern: foo()
+  std::string className = currentClassName;
+  std::string methodName = node->identifier_1->name;
 
   // Pattern: foo.bar()
   if (node->identifier_2) {
     VariableNode varNode(node->identifier_1);
     varNode.accept(this);
     if (varNode.basetype != bt_object) typeError(not_object);
-    std::string className = varNode.objectClassName;
-
-    // Search methods of current class and super classes.
-    while (!(*classTable)[className].methods->count(methodName)) {
-      className = (*classTable)[className].superClassName;
-      if (!classTable->count(className)) typeError(undefined_method);
-    }
-
-    methodInfo = (*(*classTable)[className].methods)[methodName];
+    className = varNode.objectClassName;
+    methodName = node->identifier_2->name;
   }
-  // Pattern: foo()
-  else {
-    if (!currentMethodTable->count(methodName)) typeError(undefined_method);
-    methodInfo = (*currentMethodTable)[methodName];
+
+  // Search methods of current class and super classes.
+  while (!classTable->at(className).methods->count(methodName)) {
+    className = classTable->at(className).superClassName;
+    if (!classTable->count(className)) typeError(undefined_method);
   }
+
+  MethodInfo methodInfo = classTable->at(className).methods->at(methodName);
 
   checkArguments(node->expression_list, methodInfo.parameters);
 
@@ -450,11 +457,10 @@ void TypeCheck::visitNewNode(NewNode* node) {
 
   if (!classTable->count(className)) typeError(undefined_class);
   MethodTable* methodTable = (*classTable)[className].methods;
-  if (!methodTable->count(className)) typeError(undefined_method);
-
-  MethodInfo methodInfo = (*methodTable)[className];
-
-  checkArguments(node->expression_list, methodInfo.parameters);
+  if (methodTable->count(className)) {
+    MethodInfo methodInfo = (*methodTable)[className];
+    checkArguments(node->expression_list, methodInfo.parameters);
+  }
 
   node->basetype = bt_object;
   node->objectClassName = className;
