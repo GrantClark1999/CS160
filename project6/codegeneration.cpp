@@ -37,7 +37,6 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
   node->visit_children(this);
   std::cout << "  add $" << currentMethodInfo.localsSize <<", %esp" << std::endl;
 	std::cout << "  pop %ebp" << std::endl;
-  // std::cout << "  leave" << std::endl;  // Restore stack and base pointers
   std::cout << "  ret" << std::endl;
 }
 
@@ -132,8 +131,8 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
   std::cout << "# IF ELSE" << std::endl;
 
   std::cout << "  pop %eax" << std::endl;
-  std::cout << "  cmp $1, %eax" << std::endl;
-  std::cout << "  jne " << elseLabel << std::endl;
+  std::cout << "  cmp $0, %eax" << std::endl;
+  std::cout << "  je " << elseLabel << std::endl;
 
   if (node->statement_list_1)
     for (auto stmt : *(node->statement_list_1)) stmt->accept(this);
@@ -155,8 +154,8 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
   std::cout << startLabel << ":" << std::endl;
   node->expression->accept(this);
   std::cout << "  pop %eax" << std::endl;
-  std::cout << "  cmp $1, %eax" << std::endl;
-  std::cout << "  jne " << exitLabel << std::endl;
+  std::cout << "  cmp $0, %eax" << std::endl;
+  std::cout << "  je " << exitLabel << std::endl;
 
   for (auto stmt : *(node->statement_list)) stmt->accept(this);
 
@@ -186,35 +185,35 @@ void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
   node->expression->accept(this);
 
   std::cout << "  pop %eax" << std::endl;
-  std::cout << "  cmp $1, %eax" << std::endl;
-  std::cout << "  je " << startLabel << std::endl;
+  std::cout << "  cmp $0, %eax" << std::endl;
+  std::cout << "  jne " << startLabel << std::endl;
   std::cout << exitLabel << ":" << std::endl;
 }
 
 void CodeGenerator::visitPlusNode(PlusNode* node) {
   node->visit_children(this);
   std::cout << "# PLUS" << std::endl;
-  std::cout << "  pop %ebx" << std::endl;
+  std::cout << "  pop %edx" << std::endl;
   std::cout << "  pop %eax" << std::endl;
-  std::cout << "  add %ebx, %eax" << std::endl;
+  std::cout << "  add %edx, %eax" << std::endl;
   std::cout << "  push %eax" << std::endl;
 }
 
 void CodeGenerator::visitMinusNode(MinusNode* node) {
   node->visit_children(this);
   std::cout << "# MINUS" << std::endl;
-  std::cout << "  pop %ebx" << std::endl;
+  std::cout << "  pop %edx" << std::endl;
   std::cout << "  pop %eax" << std::endl;
-  std::cout << "  sub %ebx, %eax" << std::endl;
+  std::cout << "  sub %edx, %eax" << std::endl;
   std::cout << "  push %eax" << std::endl;
 }
 
 void CodeGenerator::visitTimesNode(TimesNode* node) {
   node->visit_children(this);
   std::cout << "# TIMES" << std::endl;
-  std::cout << "  pop %ebx" << std::endl;
+  std::cout << "  pop %edx" << std::endl;
   std::cout << "  pop %eax" << std::endl;
-  std::cout << "  imul %ebx, %eax" << std::endl;
+  std::cout << "  imul %edx, %eax" << std::endl;
   std::cout << "  push %eax" << std::endl;
 }
 
@@ -324,30 +323,47 @@ void CodeGenerator::visitNegationNode(NegationNode* node) {
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
-  node->expression_list->reverse();
   node->visit_children(this);
 
   std::cout << "# CALLING METHOD "
-            << (node->identifier_2 ? node->identifier_2->name + "." : "")
-            << node->identifier_1->name << std::endl;
+            << node->identifier_1->name
+            << (node->identifier_2 ? "." + node->identifier_2->name : "")
+            << std::endl;
 
-  // Pattern: foo()
   std::string className = currentClassName;
-  ClassInfo classInfo = currentClassInfo;
+  ClassInfo classInfo = classTable->at(className);
   std::string methodName = node->identifier_1->name;
-  int offset = 8;
+  int offset;
 
   // Pattern: foo.bar()
   if (node->identifier_2) {
-    bool isLocal = currentMethodInfo.variables->count(node->identifier_1->name);
-    VariableInfo var =
-        (isLocal ? currentMethodInfo.variables : currentClassInfo.members)
-            ->at(node->identifier_1->name);
-
+    VariableInfo var;
+    if (currentMethodInfo.variables->count(node->identifier_1->name)) {
+      var = currentMethodInfo.variables->at(node->identifier_1->name);
+      offset = var.offset;
+      std::cout << "  mov " << offset << "(%ebp), %eax" << std::endl;
+    } else {
+      while (!classInfo.members->count(node->identifier_1->name)) {
+        className = classInfo.superClassName;
+        classInfo = classTable->at(className);
+      }
+      var = classInfo.members->at(node->identifier_1->name);
+      offset = var.offset;
+      ClassInfo id1Class = classInfo;
+      while (!id1Class.superClassName.empty()) {
+        id1Class = classTable->at(classInfo.superClassName);
+			  offset += id1Class.membersSize;
+		  }
+      std::cout << "  mov 8(%ebp), %ebx" << std::endl;
+			std::cout << "  mov " << offset	<< "(%ebx), %eax" << std::endl;
+    }
     className = var.type.objectClassName;
     classInfo = classTable->at(className);
     methodName = node->identifier_2->name;
-    offset = var.offset;
+  } 
+  // Pattern: foo()
+  else {
+    std::cout << "  mov 8(%ebp), %eax" << std::endl;
   }
 
   // Search class and superclasses for method.
@@ -356,7 +372,7 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
     classInfo = classTable->at(className);
   }
 
-  std::cout << "  push " << offset << "(%ebp)" << std::endl;
+  std::cout << "  push %eax" << std::endl;
   std::cout << "  call " << className << "_" << methodName << std::endl;
   std::cout << "  add $" << 4 * (node->expression_list->size() + 1 ) << ", %esp"
             << std::endl;
@@ -421,7 +437,7 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
   // Local Variable
   if (currentMethodInfo.variables->count(node->identifier->name)) {
     int offset = currentMethodInfo.variables->at(node->identifier->name).offset;
-    std::cout << "   movl " << offset << "(%ebp), %eax" << std::endl;
+    std::cout << "  mov " << offset << "(%ebp), %eax" << std::endl;
   }
 
   // Member Variable
@@ -440,8 +456,8 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
       offset += classInfo.membersSize;
     }
 
-    std::cout << "  movl " << "8(%ebp), %eax" << std::endl;
-    std::cout << "  movl " << offset << "(%eax), %eax" << std::endl;
+    std::cout << "  mov " << "8(%ebp), %eax" << std::endl;
+    std::cout << "  mov " << offset << "(%eax), %eax" << std::endl;
   }
 
   std::cout << "  push %eax" << std::endl;

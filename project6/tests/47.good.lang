@@ -142,7 +142,6 @@ class1 extends class0 {
         local1 = new class0(167, 48, 239 / 75 * 170, false, 11);
         local0 = 163;
         local2 = 205;
-        
         if 86 >129 - member6 + 94 / local1.member0  {
             local1.member0 = -local1.member4;
             if member5 {
